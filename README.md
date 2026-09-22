@@ -29,7 +29,7 @@ Traditional encryption tools are secure but slow — decrypting a large movie fi
 * **Panic Button**: A discreet floating button to instantly hide everything.
 * **Quick Settings Tile**: Toggle visibility directly from your control center without opening the main app.
 * **Secure Access**: Protect Amarok itself with a Password or Fingerprint lock.
-* **Camouflage Mode**: Disguise Amarok as a Calendar app.
+* **Camouflage Mode**: Disguise Amarok as a Calendar or Calculator app.
 
 ## Screenshots
 
