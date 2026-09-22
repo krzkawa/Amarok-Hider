@@ -15,4 +15,17 @@
     <color name="calendar_white_light">#4DFFFFFF</color>
     <color name="calendar_white">#D9FFFFFF</color>
     <color name="calendar_spotlight_bg">#00000099</color>
+
+    <color name="calculator_bg">#17181C</color>
+    <color name="calculator_display_bg">#17181C</color>
+    <color name="calculator_expression_text">#FFFFFFFF</color>
+    <color name="calculator_preview_text">#8A8D93</color>
+    <color name="calculator_key_digit_bg">#23252B</color>
+    <color name="calculator_key_digit_text">#FFFFFFFF</color>
+    <color name="calculator_key_function_bg">#2E3138</color>
+    <color name="calculator_key_function_text">#8AB4F8</color>
+    <color name="calculator_key_operator_bg">#2E3138</color>
+    <color name="calculator_key_operator_text">#FFB066</color>
+    <color name="calculator_key_equals_bg">#FF9800</color>
+    <color name="calculator_key_equals_text">#17181C</color>
 </resources>

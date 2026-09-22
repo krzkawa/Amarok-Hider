@@ -9,11 +9,13 @@ import deltazero.amarok.BuildConfig;
 public class LauncherIconController {
     private static final String LAUNCHER_DEFAULT = "deltazero.amarok.launcher.default";
     private static final String LAUNCHER_CALENDAR = "deltazero.amarok.launcher.calendar";
+    private static final String LAUNCHER_CALCULATOR = "deltazero.amarok.launcher.calculator";
 
     public enum IconState {
-        VISIBLE,    // Normal Amarok icon visible
-        DISGUISED,  // Calendar icon visible (disguised)
-        HIDDEN      // No icon visible
+        VISIBLE,                // Normal Amarok icon visible
+        DISGUISED_CALENDAR,     // Calendar icon visible (disguised)
+        DISGUISED_CALCULATOR,   // Calculator icon visible (disguised)
+        HIDDEN                  // No icon visible
     }
 
     public static void setIconState(Activity activity, IconState state) {
@@ -24,16 +26,25 @@ public class LauncherIconController {
                 // Show normal Amarok icon
                 setComponentState(pm, LAUNCHER_DEFAULT, true);
                 setComponentState(pm, LAUNCHER_CALENDAR, false);
+                setComponentState(pm, LAUNCHER_CALCULATOR, false);
             }
-            case DISGUISED -> {
+            case DISGUISED_CALENDAR -> {
                 // Show calendar icon (disguised)
                 setComponentState(pm, LAUNCHER_CALENDAR, true);
                 setComponentState(pm, LAUNCHER_DEFAULT, false);
+                setComponentState(pm, LAUNCHER_CALCULATOR, false);
+            }
+            case DISGUISED_CALCULATOR -> {
+                // Show calculator icon (disguised)
+                setComponentState(pm, LAUNCHER_CALCULATOR, true);
+                setComponentState(pm, LAUNCHER_DEFAULT, false);
+                setComponentState(pm, LAUNCHER_CALENDAR, false);
             }
             case HIDDEN -> {
                 // Hide all icons
                 setComponentState(pm, LAUNCHER_DEFAULT, false);
                 setComponentState(pm, LAUNCHER_CALENDAR, false);
+                setComponentState(pm, LAUNCHER_CALCULATOR, false);
             }
         }
     }

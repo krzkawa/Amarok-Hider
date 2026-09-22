@@ -15,6 +15,7 @@ Core Features
 - **Panic Button:** Floating button to trigger hide operations.
 - **Quick Settings Tile:** Direct access for quick hide/unhide.
 - **App Lock:** Protects with password/fingerprint.
+- **App Disguise:** Opens as a calendar or a working calculator instead of Amarok.
 
 ## Functional Index
 
@@ -92,7 +93,24 @@ The main app and the module run in different processes, so they communicate with
 
 When a hide/unhide operation is triggered, the main app will call `XHidePrefBridge.commitNewValues()` to activate the module for system queries filtering.
 
-### 6. Quick Hide
+### 6. App Disguise
+
+**Enum:** `app/src/main/java/deltazero/amarok/utils/DisguiseType.java`
+
+When disguise is on, `AmarokActivity.onResume()` opens the disguise activity of the configured
+`DisguiseType` instead of Amarok. Each type pairs an activity with the launcher alias
+`LauncherIconController` enables for it, so the icon matches the app being imitated.
+
+- **Calendar:** `ui/CalendarActivity.java` — long press the year to dismiss the disguise.
+- **Calculator:** `ui/CalculatorActivity.java` — type the equation set in the settings and press
+  `=` to dismiss the disguise. Arithmetic lives in `utils/CalculatorEngine.java` and the keypad
+  rules in `utils/CalculatorInput.java`; both are free of Android dependencies and covered by the
+  JVM unit tests under `app/src/test/`.
+
+Either way, dismissing the disguise calls `SecurityUtil.dismissDisguise()` and finishes, which
+hands the user back to the app lock if one is set.
+
+### 7. Quick Hide
 
 Provides multiple triggers for instant hide/unhide operations:
 
