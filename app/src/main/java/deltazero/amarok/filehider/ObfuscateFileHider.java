@@ -36,6 +36,12 @@ public class ObfuscateFileHider extends BaseFileHider {
     public final static String FILENAME_FULL_PROCESS_MARK = "!amk1";
     public final static String FILENAME_HEADER_PROCESS_MARK = "!amk2";
 
+    // Counterparts for a name too long to obfuscate in place. The file carries a short id and
+    // the name it had is kept in the directory's LongFilenameIndex.
+    public final static String FILENAME_NO_PROCESS_LONG_MARK = "!amk3";
+    public final static String FILENAME_FULL_PROCESS_LONG_MARK = "!amk4";
+    public final static String FILENAME_HEADER_PROCESS_LONG_MARK = "!amk5";
+
     public boolean processHeader;
     public boolean processTextFile;
     public boolean processTextFileEnhanced;
@@ -49,9 +55,10 @@ public class ObfuscateFileHider extends BaseFileHider {
 
     @Override
     protected void process(Set<String> targetDirs, ProcessMethod method) throws InterruptedException {
+        var longFilenameIndex = new LongFilenameIndex();
         for (var dir : targetDirs) {
             try {
-                processTree(Paths.get(dir), method);
+                processTree(Paths.get(dir), method, longFilenameIndex);
             } catch (InterruptedException e) {
                 throw new InterruptedException();
             } catch (Exception e) {
@@ -71,7 +78,8 @@ public class ObfuscateFileHider extends BaseFileHider {
         return "Obfuscate";
     }
 
-    private void processTree(Path targetDir, ProcessMethod method) throws InterruptedException {
+    private void processTree(Path targetDir, ProcessMethod method, LongFilenameIndex longFilenameIndex)
+            throws InterruptedException {
 
         Log.i(TAG, "Start to process file tree: " + targetDir);
 
@@ -92,6 +100,10 @@ public class ObfuscateFileHider extends BaseFileHider {
                     if (path.getFileName().toString().equals(".nomedia"))
                         return FileVisitResult.CONTINUE;
 
+                    // Skip the index of long names: it has to keep its own name to be found.
+                    if (path.getFileName().toString().equals(LongFilenameIndex.INDEX_FILENAME))
+                        return FileVisitResult.CONTINUE;
+
                     // Check whether the whole file should be processed before renaming (processFilename).
                     boolean shouldProcessHeader = checkShouldProcessHeader(path, method);
                     boolean shouldProcessWhole = checkShouldProcessWhole(path, method);
@@ -104,8 +116,7 @@ public class ObfuscateFileHider extends BaseFileHider {
                         endingMark = FILENAME_FULL_PROCESS_MARK;
 
                     // Process filename
-                    // TODO: 2023/1/9 Handle long filename that invalid to android after Base64 encode
-                    Path newPath = processFilename(path, method, endingMark);
+                    Path newPath = processFilename(path, method, endingMark, longFilenameIndex);
 
                     // Process file content
                     if (newPath != null) {
@@ -121,8 +132,18 @@ public class ObfuscateFileHider extends BaseFileHider {
 
                 @Override
                 public FileVisitResult postVisitDirectory(Path dir, IOException e) {
+                    // Clear the directory's own index before it is renamed along with the directory.
+                    if (method == UNHIDE) {
+                        try {
+                            longFilenameIndex.discardIfComplete(dir);
+                        } catch (IOException ioException) {
+                            Log.w(TAG, "Failed to remove the long name index of " + dir, ioException);
+                        }
+                    }
+
                     if (dir != targetDir)
-                        processFilename(dir, method, FILENAME_NO_PROCESS_MARK);
+                        processFilename(dir, method, FILENAME_NO_PROCESS_MARK, longFilenameIndex);
+
                     return FileVisitResult.CONTINUE;
                 }
 
@@ -144,15 +165,18 @@ public class ObfuscateFileHider extends BaseFileHider {
      * @param path            The path to be processed.
      * @param method          Process method.
      * @param extraEndingMark (only effective when `HIDE`) Extra mark to be append to the end of the filename.
+     * @param longFilenameIndex Holds the names that are too long to obfuscate in place.
      * @return If the process succeeds, return the new path. Otherwise, return null.
      */
     @Nullable
-    private Path processFilename(Path path, ProcessMethod method, String extraEndingMark) {
+    private Path processFilename(Path path, ProcessMethod method, String extraEndingMark,
+                                 LongFilenameIndex longFilenameIndex) {
         String filename = path.getFileName().toString();
-        String newFilename = null;
+        String newFilename;
         Path newPath;
 
         boolean hasEncoded = FileHiderUtil.checkIsMarkInFilename(filename);
+        boolean isLongName = FileHiderUtil.checkIsLongMarkInFilename(filename);
 
         if (method == HIDE) {
             if (hasEncoded) {
@@ -161,21 +185,43 @@ public class ObfuscateFileHider extends BaseFileHider {
             }
 
             newFilename = "." + Base64.encodeToString(filename.getBytes(UTF_8), BASE64_TAG) + extraEndingMark;
+
+            if (!LongFilenameIndex.fits(newFilename)) {
+                // Base64 is a third longer than what it encodes, so a long name cannot be
+                // obfuscated in place. It takes an id instead, recorded before the rename.
+                newFilename = encodeLongFilename(path, filename, extraEndingMark, longFilenameIndex);
+                if (newFilename == null)
+                    return null;
+            }
+
             Log.d(TAG, "Encode: " + path + " -> " + newFilename);
 
-        } else if (method == UNHIDE) {
+        } else {
             if (!hasEncoded) {
                 Log.w(TAG, "Found not coded name: " + filename + ", skip...");
                 return null;
             }
 
-            try {
-                newFilename = new String(
-                        Base64.decode(FileHiderUtil.stripFilenameExtras(filename), BASE64_TAG), UTF_8
-                );
-            } catch (IllegalArgumentException e) {
-                Log.w(TAG, "Unable to decode: " + filename);
-                return null;
+            if (isLongName) {
+                String id = FileHiderUtil.stripFilenameExtras(filename);
+                newFilename = longFilenameIndex.lookup(path.getParent(), id);
+
+                if (newFilename == null) {
+                    // Without its name the file stays as it is, hidden but whole, so a later run
+                    // can still restore it if the index comes back.
+                    Log.w(TAG, "No recorded name for: " + filename);
+                    return null;
+                }
+
+            } else {
+                try {
+                    newFilename = new String(
+                            Base64.decode(FileHiderUtil.stripFilenameExtras(filename), BASE64_TAG), UTF_8
+                    );
+                } catch (IllegalArgumentException e) {
+                    Log.w(TAG, "Unable to decode: " + filename);
+                    return null;
+                }
             }
 
             Log.d(TAG, "Decode: " + path + " -> " + newFilename);
@@ -183,17 +229,56 @@ public class ObfuscateFileHider extends BaseFileHider {
 
         // Try to rename.
 
-        assert newFilename != null;
         newPath = Paths.get(path.getParent().toString(), newFilename);
 
         boolean is_succeeded = path.toFile().renameTo(newPath.toFile());
 
         if (!is_succeeded) {
             Log.w(TAG, "Error when renaming file: " + path + " -> " + newPath);
+
+            // The index still names a file that is sitting there hidden, so it has to stay.
+            if (method == UNHIDE && isLongName)
+                longFilenameIndex.markIncomplete(path.getParent());
+
             return null;
         } else {
             return newPath;
         }
+    }
+
+    /**
+     * Give a file whose obfuscated name would not fit a short id instead, recording what it was
+     * called in the index beside it.
+     *
+     * @return The name to rename it to, or null if the name could not be recorded, in which case
+     *         the file is left alone rather than given a name nothing can undo.
+     */
+    @Nullable
+    private String encodeLongFilename(Path path, String filename, String extraEndingMark,
+                                      LongFilenameIndex longFilenameIndex) {
+
+        String id = LongFilenameIndex.idFor(filename);
+
+        try {
+            longFilenameIndex.record(path.getParent(), id, filename);
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to record the name of " + path + ", leaving it visible: ", e);
+            return null;
+        }
+
+        return "." + id + longMarkFor(extraEndingMark);
+    }
+
+    /**
+     * @param extraEndingMark The mark the file would have carried.
+     * @return Its counterpart for a name kept in the index.
+     */
+    private static String longMarkFor(String extraEndingMark) {
+        if (FILENAME_FULL_PROCESS_MARK.equals(extraEndingMark))
+            return FILENAME_FULL_PROCESS_LONG_MARK;
+        if (FILENAME_HEADER_PROCESS_MARK.equals(extraEndingMark))
+            return FILENAME_HEADER_PROCESS_LONG_MARK;
+        return FILENAME_NO_PROCESS_LONG_MARK;
     }
 
     private void processFileHeader(Path path) {
@@ -289,13 +374,15 @@ public class ObfuscateFileHider extends BaseFileHider {
             }
 
         } else { // UNHIDE
-            return filename.endsWith(FILENAME_FULL_PROCESS_MARK);
+            return filename.endsWith(FILENAME_FULL_PROCESS_MARK)
+                    || filename.endsWith(FILENAME_FULL_PROCESS_LONG_MARK);
         }
     }
 
     private boolean checkShouldProcessHeader(Path path, ProcessMethod method) {
         String filename = path.getFileName().toString();
         if (method == HIDE) return processHeader;
-        else return filename.endsWith(FILENAME_HEADER_PROCESS_MARK);
+        else return filename.endsWith(FILENAME_HEADER_PROCESS_MARK)
+                || filename.endsWith(FILENAME_HEADER_PROCESS_LONG_MARK);
     }
 }

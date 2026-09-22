@@ -39,6 +39,14 @@ The `Hider` class serves as the central management system for both file and app 
   - **Obfuscation:** Implemented in `ObfuscateFileHider`
   - **Chmod Mode:** Implemented in `ChmodFileHider`
 
+Obfuscation renames each entry to the Base64 of its name plus an ending mark that records how its
+contents were processed. Base64 is a third longer than what it encodes, so a name of roughly 186
+bytes or more will not fit in a directory entry; those entries take a short id instead and their
+original name is kept in `LongFilenameIndex`, a `.amk_names!amk` file in the same directory. The
+`!amk3`, `!amk4` and `!amk5` marks are the counterparts of `!amk`, `!amk1` and `!amk2` for names
+held that way. `LongFilenameIndex` has no Android dependency and is covered by the JVM unit tests
+under `app/src/test/`.
+
 ### 3. App Hiding Implementations
 
 **Directory:** `app/src/main/java/deltazero/amarok/apphider/`

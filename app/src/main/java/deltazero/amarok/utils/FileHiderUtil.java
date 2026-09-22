@@ -1,7 +1,10 @@
 package deltazero.amarok.utils;
 
+import static deltazero.amarok.filehider.ObfuscateFileHider.FILENAME_FULL_PROCESS_LONG_MARK;
 import static deltazero.amarok.filehider.ObfuscateFileHider.FILENAME_FULL_PROCESS_MARK;
+import static deltazero.amarok.filehider.ObfuscateFileHider.FILENAME_HEADER_PROCESS_LONG_MARK;
 import static deltazero.amarok.filehider.ObfuscateFileHider.FILENAME_HEADER_PROCESS_MARK;
+import static deltazero.amarok.filehider.ObfuscateFileHider.FILENAME_NO_PROCESS_LONG_MARK;
 import static deltazero.amarok.filehider.ObfuscateFileHider.FILENAME_NO_PROCESS_MARK;
 
 import android.util.Log;
@@ -37,6 +40,16 @@ public class FileHiderUtil {
     }
 
     public static boolean checkIsMarkInFilename(String filename) {
+        return checkIsShortMarkInFilename(filename) || checkIsLongMarkInFilename(filename);
+    }
+
+    /**
+     * Whether the filename carries a mark for a name obfuscated in place.
+     *
+     * @param filename The filename to check.
+     * @return Whether it does.
+     */
+    public static boolean checkIsShortMarkInFilename(String filename) {
         // Strip leading dot
         if (filename.startsWith("."))
             filename = filename.substring(1);
@@ -44,6 +57,23 @@ public class FileHiderUtil {
         return filename.endsWith(FILENAME_NO_PROCESS_MARK)
                 || filename.endsWith(FILENAME_HEADER_PROCESS_MARK)
                 || filename.endsWith(FILENAME_FULL_PROCESS_MARK);
+    }
+
+    /**
+     * Whether the filename carries a mark for a name too long to obfuscate in place, which is
+     * kept in the directory's index instead.
+     *
+     * @param filename The filename to check.
+     * @return Whether it does.
+     */
+    public static boolean checkIsLongMarkInFilename(String filename) {
+        // Strip leading dot
+        if (filename.startsWith("."))
+            filename = filename.substring(1);
+
+        return filename.endsWith(FILENAME_NO_PROCESS_LONG_MARK)
+                || filename.endsWith(FILENAME_HEADER_PROCESS_LONG_MARK)
+                || filename.endsWith(FILENAME_FULL_PROCESS_LONG_MARK);
     }
 
 
