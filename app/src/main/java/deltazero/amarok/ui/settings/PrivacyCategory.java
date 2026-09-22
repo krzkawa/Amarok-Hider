@@ -1,16 +1,24 @@
 package deltazero.amarok.ui.settings;
 
 
+import android.content.DialogInterface;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
+import androidx.preference.Preference;
 import androidx.preference.PreferenceScreen;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import deltazero.amarok.PrefMgr;
 import deltazero.amarok.R;
 import deltazero.amarok.ui.CountdownConfirmDialog;
 import deltazero.amarok.ui.SetPasswordFragment;
+import deltazero.amarok.utils.CalculatorInput;
+import deltazero.amarok.utils.DisguiseType;
 import deltazero.amarok.utils.HashUtil;
 import deltazero.amarok.utils.LauncherIconController;
 import deltazero.amarok.utils.SecurityUtil;
@@ -67,11 +75,35 @@ public class PrivacyCategory extends BaseCategory {
             PrefMgr.setDoShowQuitDisguiseInstuct(true);
             if (enableDisguise)
                 SecurityUtil.lockAndDisguise();
-            LauncherIconController.setIconState(activity,
-                    enableDisguise ? LauncherIconController.IconState.DISGUISED : LauncherIconController.IconState.VISIBLE);
+            LauncherIconController.setIconState(activity, enableDisguise
+                    ? PrefMgr.getDisguiseType().iconState
+                    : LauncherIconController.IconState.VISIBLE);
             return true;
         });
         addPreference(disguisePref);
+
+        var unlockEquationPref = new Preference(activity);
+        unlockEquationPref.setKey(PrefMgr.CALCULATOR_UNLOCK_EQUATION);
+        unlockEquationPref.setIcon(R.drawable.ic_lock);
+        unlockEquationPref.setTitle(R.string.calculator_unlock_equation);
+        unlockEquationPref.setSummary(PrefMgr.getCalculatorUnlockEquation());
+        unlockEquationPref.setVisible(PrefMgr.getDisguiseType() == DisguiseType.CALCULATOR);
+        unlockEquationPref.setOnPreferenceClickListener(preference -> {
+            showUnlockEquationDialog(unlockEquationPref);
+            return true;
+        });
+
+        var disguiseTypePref = new Preference(activity);
+        disguiseTypePref.setKey(PrefMgr.DISGUISE_TYPE);
+        disguiseTypePref.setIcon(R.drawable.domino_mask_fill0_wght400_grad0_opsz24);
+        disguiseTypePref.setTitle(R.string.disguise_type);
+        disguiseTypePref.setSummary(PrefMgr.getDisguiseType().labelResId);
+        disguiseTypePref.setOnPreferenceClickListener(preference -> {
+            showDisguiseTypeDialog(disguiseTypePref, unlockEquationPref);
+            return true;
+        });
+        addPreference(disguiseTypePref);
+        addPreference(unlockEquationPref);
 
         var hideAmarokIconPref = new MaterialSwitchPreference(activity);
         hideAmarokIconPref.setKey(PrefMgr.HIDE_AMAROK_ICON);
@@ -91,6 +123,8 @@ public class PrivacyCategory extends BaseCategory {
                             // When hiding icon, disable disguise and turn it off
                             disguisePref.setChecked(false);
                             disguisePref.setEnabled(false);
+                            disguiseTypePref.setEnabled(false);
+                            unlockEquationPref.setEnabled(false);
                             LauncherIconController.setIconState(activity, LauncherIconController.IconState.HIDDEN);
                             hideAmarokIconPref.setChecked(true);
                         })
@@ -103,12 +137,16 @@ public class PrivacyCategory extends BaseCategory {
             } else {
                 // When showing icon, re-enable disguise option
                 disguisePref.setEnabled(true);
+                disguiseTypePref.setEnabled(true);
+                unlockEquationPref.setEnabled(true);
                 LauncherIconController.setIconState(activity, LauncherIconController.IconState.VISIBLE);
                 return true;
             }
         });
         // Set initial state: if icon is hidden, disable disguise option
         disguisePref.setEnabled(!PrefMgr.getHideAmarokIcon());
+        disguiseTypePref.setEnabled(!PrefMgr.getHideAmarokIcon());
+        unlockEquationPref.setEnabled(!PrefMgr.getHideAmarokIcon());
         addPreference(hideAmarokIconPref);
 
         var hideFromRecentsPref = new MaterialSwitchPreference(activity);
@@ -150,5 +188,69 @@ public class PrivacyCategory extends BaseCategory {
         disableToastsPref.setSummary(R.string.disable_toasts_description);
         disableToastsPref.setChecked(PrefMgr.getDisableToasts());
         addPreference(disableToastsPref);
+    }
+
+    private void showDisguiseTypeDialog(Preference disguiseTypePref, Preference unlockEquationPref) {
+
+        DisguiseType[] types = DisguiseType.values();
+        String[] labels = new String[types.length];
+        int checked = 0;
+
+        for (int i = 0; i < types.length; i++) {
+            labels[i] = activity.getString(types[i].labelResId);
+            if (types[i] == PrefMgr.getDisguiseType())
+                checked = i;
+        }
+
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(R.string.disguise_type)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    DisguiseType selected = types[which];
+                    PrefMgr.setDisguiseType(selected);
+                    PrefMgr.setDoShowQuitDisguiseInstuct(true);
+
+                    disguiseTypePref.setSummary(selected.labelResId);
+                    unlockEquationPref.setVisible(selected == DisguiseType.CALCULATOR);
+
+                    // The launcher icon has to match whichever app Amarok is pretending to be.
+                    if (PrefMgr.getEnableDisguise())
+                        LauncherIconController.setIconState(activity, selected.iconState);
+
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void showUnlockEquationDialog(Preference unlockEquationPref) {
+
+        var view = activity.getLayoutInflater().inflate(R.layout.dialog_equation_input, null);
+        TextInputLayout inputLayout = view.findViewById(R.id.dialog_equation_input_til_input);
+        TextInputEditText input = view.findViewById(R.id.dialog_equation_input_et_input);
+        input.setText(PrefMgr.getCalculatorUnlockEquation());
+
+        var dialog = new MaterialAlertDialogBuilder(activity)
+                .setTitle(R.string.calculator_unlock_equation)
+                .setMessage(R.string.calculator_unlock_equation_dialog_message)
+                .setView(view)
+                .setPositiveButton(R.string.ok, null)
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+
+        // Set the listener after showing, so an invalid equation leaves the dialog open.
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String equation = input.getText() == null ? "" : input.getText().toString();
+            inputLayout.setError(null);
+
+            if (!CalculatorInput.isTypeable(equation)) {
+                inputLayout.setError(activity.getString(R.string.calculator_unlock_equation_invalid));
+                return;
+            }
+
+            PrefMgr.setCalculatorUnlockEquation(equation);
+            PrefMgr.setDoShowQuitDisguiseInstuct(true);
+            unlockEquationPref.setSummary(equation);
+            dialog.dismiss();
+        });
     }
 }

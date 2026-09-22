@@ -11,7 +11,6 @@ import androidx.core.view.WindowCompat;
 
 import java.util.List;
 
-import deltazero.amarok.ui.CalendarActivity;
 import deltazero.amarok.ui.SecurityAuthActivity;
 import deltazero.amarok.utils.SecurityUtil;
 
@@ -46,7 +45,7 @@ public class AmarokActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         if (SecurityUtil.isDisguiseNeeded())
-            startActivity(new Intent(this, CalendarActivity.class));
+            startActivity(new Intent(this, PrefMgr.getDisguiseType().activityClass));
         else if (SecurityUtil.isUnlockRequired())
             startActivity(new Intent(this, SecurityAuthActivity.class));
         super.onResume();

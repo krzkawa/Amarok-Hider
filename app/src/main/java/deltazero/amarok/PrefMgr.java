@@ -23,6 +23,7 @@ import deltazero.amarok.filehider.NoMediaFileHider;
 import deltazero.amarok.filehider.NoneFileHider;
 import deltazero.amarok.filehider.ObfuscateFileHider;
 import deltazero.amarok.utils.UpdateUtil;
+import deltazero.amarok.utils.DisguiseType;
 
 public final class PrefMgr {
 
@@ -78,6 +79,11 @@ public final class PrefMgr {
     public static final String PANIC_BUTTON_Y = "panicButtonY";
     public static final String PANIC_BUTTON_LEFT_EDGE = "panicButtonLeftEdge";
     public static final String DARK_THEME = "darkTheme";
+    public static final String DISGUISE_TYPE = "disguiseType";
+    public static final String CALCULATOR_UNLOCK_EQUATION = "calculatorUnlockEquation";
+
+    /** Unlikely to be typed by accident, and short enough to remember. */
+    public static final String DEFAULT_CALCULATOR_UNLOCK_EQUATION = "1234+5678";
 
     public static Set<String> getHideFilePath() {
         // Return a defensive copy to avoid SharedPreferences caching issues
@@ -256,6 +262,24 @@ public final class PrefMgr {
 
     public static void setEnableDisguise(boolean enableDisguise) {
         mPrefEditor.putBoolean(ENABLE_DISGUISE, enableDisguise);
+        mPrefEditor.apply();
+    }
+
+    public static DisguiseType getDisguiseType() {
+        return DisguiseType.fromKey(mPrefs.getString(DISGUISE_TYPE, DisguiseType.CALENDAR.key));
+    }
+
+    public static void setDisguiseType(DisguiseType disguiseType) {
+        mPrefEditor.putString(DISGUISE_TYPE, disguiseType.key);
+        mPrefEditor.apply();
+    }
+
+    public static String getCalculatorUnlockEquation() {
+        return mPrefs.getString(CALCULATOR_UNLOCK_EQUATION, DEFAULT_CALCULATOR_UNLOCK_EQUATION);
+    }
+
+    public static void setCalculatorUnlockEquation(String equation) {
+        mPrefEditor.putString(CALCULATOR_UNLOCK_EQUATION, equation);
         mPrefEditor.apply();
     }
 
