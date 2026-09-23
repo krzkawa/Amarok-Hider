@@ -2,6 +2,8 @@ package deltazero.amarok.ui.settings;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -13,6 +15,7 @@ import androidx.preference.PreferenceScreen;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import deltazero.amarok.PrefMgr;
+import deltazero.amarok.QSTileService;
 import deltazero.amarok.R;
 import deltazero.amarok.utils.SwitchLocaleUtil;
 import rikka.material.preference.MaterialSwitchPreference;
@@ -89,6 +92,19 @@ public class AppearanceCategory extends BaseCategory {
             return true;
         });
         addPreference(invertTileColorPref);
+
+        var discreetTilePref = new MaterialSwitchPreference(activity);
+        discreetTilePref.setKey(PrefMgr.DISCREET_TILE);
+        discreetTilePref.setIcon(R.drawable.visibility_off_24dp);
+        discreetTilePref.setTitle(R.string.discreet_tile);
+        discreetTilePref.setSummary(R.string.discreet_tile_description);
+        discreetTilePref.setChecked(PrefMgr.getDiscreetTile());
+        discreetTilePref.setOnPreferenceChangeListener((preference, newValue) -> {
+            // Stored by the preference after this returns, so redraw once it is.
+            new Handler(Looper.getMainLooper()).post(() -> QSTileService.refresh(activity));
+            return true;
+        });
+        addPreference(discreetTilePref);
     }
 
     private void showDarkThemeDialog(FragmentActivity activity, Preference darkThemePref) {

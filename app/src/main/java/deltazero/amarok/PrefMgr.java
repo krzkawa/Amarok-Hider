@@ -373,6 +373,33 @@ public final class PrefMgr {
         mPrefEditor.apply();
     }
 
+    public static final String DISCREET_TILE = "discreetTile";
+    public static final String RESTORE_DISMISSED_NOTIFICATION = "restoreDismissedNotification";
+
+    /**
+     * Whether the quick settings tile goes by a neutral name and icon instead of Amarok's.
+     */
+    public static boolean getDiscreetTile() {
+        return mPrefs.getBoolean(DISCREET_TILE, false);
+    }
+
+    public static void setDiscreetTile(boolean discreetTile) {
+        mPrefEditor.putBoolean(DISCREET_TILE, discreetTile);
+        mPrefEditor.apply();
+    }
+
+    /**
+     * Whether the quick hide notification comes back when swiped away.
+     */
+    public static boolean getRestoreDismissedNotification() {
+        return mPrefs.getBoolean(RESTORE_DISMISSED_NOTIFICATION, false);
+    }
+
+    public static void setRestoreDismissedNotification(boolean restore) {
+        mPrefEditor.putBoolean(RESTORE_DISMISSED_NOTIFICATION, restore);
+        mPrefEditor.apply();
+    }
+
     public static boolean getDisableSecurityWhenUnhidden() {
         return mPrefs.getBoolean(DISABLE_SECURITY_WHEN_UNHIDDEN, false);
     }

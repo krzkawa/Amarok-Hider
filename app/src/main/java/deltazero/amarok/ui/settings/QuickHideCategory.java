@@ -1,5 +1,7 @@
 package deltazero.amarok.ui.settings;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -23,7 +25,7 @@ import rikka.material.preference.MaterialSwitchPreference;
 
 public class QuickHideCategory extends BaseCategory {
 
-    private MaterialSwitchPreference panicButtonPref, autoHideAfterScreenOffPref;
+    private MaterialSwitchPreference panicButtonPref, autoHideAfterScreenOffPref, restoreNotificationPref;
     private SeekBarPreference autoHideDelayPref;
     private Preference panicButtonColorPref;
 
@@ -60,6 +62,7 @@ public class QuickHideCategory extends BaseCategory {
         });
         servicePref.setOnPreferenceChangeListener((preference, newValue) -> {
             panicButtonPref.setEnabled((boolean) newValue);
+            restoreNotificationPref.setEnabled((boolean) newValue);
             panicButtonColorPref.setEnabled((boolean) newValue && panicButtonPref.isChecked());
             autoHideAfterScreenOffPref.setEnabled((boolean) newValue);
             autoHideDelayPref.setEnabled((boolean) newValue && autoHideAfterScreenOffPref.isChecked());
@@ -68,6 +71,20 @@ public class QuickHideCategory extends BaseCategory {
             return true;
         });
         addPreference(servicePref);
+
+        restoreNotificationPref = new MaterialSwitchPreference(activity);
+        restoreNotificationPref.setKey(PrefMgr.RESTORE_DISMISSED_NOTIFICATION);
+        restoreNotificationPref.setIcon(R.drawable.ic_restore);
+        restoreNotificationPref.setTitle(R.string.restore_dismissed_notification);
+        restoreNotificationPref.setSummary(R.string.restore_dismissed_notification_description);
+        restoreNotificationPref.setEnabled(PrefMgr.getEnableQuickHideService());
+        restoreNotificationPref.setChecked(PrefMgr.getRestoreDismissedNotification());
+        restoreNotificationPref.setOnPreferenceChangeListener((preference, newValue) -> {
+            // Stored by the preference after this returns; restart then, to rebuild the notification.
+            new Handler(Looper.getMainLooper()).post(() -> QuickHideService.startService(activity));
+            return true;
+        });
+        addPreference(restoreNotificationPref);
 
         panicButtonPref = new MaterialSwitchPreference(activity);
         panicButtonPref.setKey(PrefMgr.ENABLE_PANIC_BUTTON);

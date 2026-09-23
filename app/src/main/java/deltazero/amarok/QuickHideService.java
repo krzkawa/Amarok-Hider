@@ -34,6 +34,9 @@ public class QuickHideService extends LifecycleService {
     private static final String CHANNEL_ID = "QUICK_HIDE_CHANNEL";
     private static final int NOTIFICATION_ID = 1;
 
+    /** Sent when the notification is swiped away, to put it back if the user asked for that. */
+    private static final String ACTION_NOTIFICATION_DISMISSED = "deltazero.amarok.NOTIFICATION_DISMISSED";
+
     private static boolean isServiceRunning = false;
 
     @Override
@@ -62,15 +65,23 @@ public class QuickHideService extends LifecycleService {
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
 
+        if (intent != null && ACTION_NOTIFICATION_DISMISSED.equals(intent.getAction())) {
+            // Android 14+ lets ongoing notifications be swiped away. The service keeps running,
+            // so only the notification needs to come back.
+            if (!isServiceRunning) {
+                // Started only to handle this, after the service itself had gone.
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+            if (PrefMgr.getRestoreDismissedNotification()) {
+                Log.i("QuickHideService", "Notification dismissed. Restoring it.");
+                getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification());
+            }
+            return START_STICKY;
+        }
+
         // Start foreground
-        Notification notification =
-                new NotificationCompat.Builder(this, CHANNEL_ID)
-                        .setContentTitle(getText(R.string.quick_hide_notification_title))
-                        .setContentText(getText(R.string.quick_hide_notification_content))
-                        .setSmallIcon(R.drawable.ic_paw)
-                        .setContentIntent(activityPendingIntent)
-                        .setOngoing(true)
-                        .build();
+        Notification notification = buildNotification();
 
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
@@ -79,27 +90,51 @@ public class QuickHideService extends LifecycleService {
         }
         isServiceRunning = true;
 
-        // Init panic button (use TOP|START so coords match the library's post-drag system)
-        panicButton = new EasyWindow<>(getApplication())
-                .setContentView(R.layout.dialog_panic_button)
-                .setGravity(Gravity.TOP | Gravity.START)
-                .setDraggable(new SpringBackDraggable())
-                .setOnClickListener(R.id.dialog_iv_panic_button,
-                        (EasyWindow.OnClickListener<ImageView>) (xToast, view) -> Hider.hide(this));
+        // The system calls this again whenever it restarts the service or is asked to start it
+        // while it runs. Each call used to add another panic button, and only the last one could
+        // be removed, which left clones on screen.
+        if (panicButton == null) {
+            // Init panic button (use TOP|START so coords match the library's post-drag system)
+            panicButton = new EasyWindow<>(getApplication())
+                    .setContentView(R.layout.dialog_panic_button)
+                    .setGravity(Gravity.TOP | Gravity.START)
+                    .setDraggable(new SpringBackDraggable())
+                    .setOnClickListener(R.id.dialog_iv_panic_button,
+                            (EasyWindow.OnClickListener<ImageView>) (xToast, view) -> Hider.hide(this));
 
-        ivPanicButton = panicButton.findViewById(R.id.dialog_iv_panic_button);
+            ivPanicButton = panicButton.findViewById(R.id.dialog_iv_panic_button);
+
+            // Restore saved position if available
+            restorePanicButtonPosition();
+
+            Hider.state.observe(this, state -> updatePanicButton());
+        }
+
         ivPanicButton.setColorFilter(PrefMgr.getPanicButtonColor(),
                 PorterDuff.Mode.SRC_IN);
-
-        // Restore saved position if available
-        restorePanicButtonPosition();
-
-        Hider.state.observe(this, state -> updatePanicButton());
         updatePanicButton();
 
         Log.i("QuickHideService", "Service start.");
 
         return START_STICKY;
+    }
+
+    private Notification buildNotification() {
+        var builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle(getText(R.string.quick_hide_notification_title))
+                .setContentText(getText(R.string.quick_hide_notification_content))
+                .setSmallIcon(R.drawable.ic_paw)
+                .setContentIntent(activityPendingIntent)
+                .setOngoing(true);
+
+        if (PrefMgr.getRestoreDismissedNotification()) {
+            var dismissedIntent = new Intent(this, QuickHideService.class)
+                    .setAction(ACTION_NOTIFICATION_DISMISSED);
+            builder.setDeleteIntent(PendingIntent.getService(this, 2, dismissedIntent,
+                    PendingIntent.FLAG_IMMUTABLE));
+        }
+
+        return builder.build();
     }
 
     @MainThread
@@ -129,8 +164,10 @@ public class QuickHideService extends LifecycleService {
     }
 
     private void updatePanicButton() {
-        if (!PrefMgr.getEnablePanicButton())
+        if (!PrefMgr.getEnablePanicButton()) {
+            cancelPanicButton();
             return;
+        }
 
         if (!XXPermissions.isGranted(getApplication(), Permission.SYSTEM_ALERT_WINDOW)) {
             Log.w("QuickHideService", "Failed to show PanicButton: Permission denied: SYSTEM_ALERT_WINDOW");
