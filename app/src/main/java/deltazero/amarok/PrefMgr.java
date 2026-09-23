@@ -283,6 +283,35 @@ public final class PrefMgr {
         mPrefEditor.apply();
     }
 
+    public static final String CALENDAR_HOLD_SECONDS = "calendarHoldSeconds";
+    public static final String CALENDAR_SECRET_DATE = "calendarSecretDate";
+
+    /**
+     * How long the calendar disguise must be held to open Amarok, in seconds. 0 is the system's
+     * long press.
+     */
+    public static int getCalendarHoldSeconds() {
+        return mPrefs.getInt(CALENDAR_HOLD_SECONDS, 0);
+    }
+
+    public static void setCalendarHoldSeconds(int seconds) {
+        mPrefEditor.putInt(CALENDAR_HOLD_SECONDS, seconds);
+        mPrefEditor.apply();
+    }
+
+    /**
+     * The date to hold in the calendar disguise instead of the year, as yyyy-mm-dd, or null.
+     */
+    @Nullable
+    public static String getCalendarSecretDate() {
+        return mPrefs.getString(CALENDAR_SECRET_DATE, null);
+    }
+
+    public static void setCalendarSecretDate(@Nullable String date) {
+        mPrefEditor.putString(CALENDAR_SECRET_DATE, date);
+        mPrefEditor.apply();
+    }
+
     public static boolean getHideAmarokIcon() {
         return mPrefs.getBoolean(HIDE_AMAROK_ICON, false);
     }

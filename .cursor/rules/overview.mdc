@@ -109,7 +109,10 @@ When disguise is on, `AmarokActivity.onResume()` opens the disguise activity of 
 `DisguiseType` instead of Amarok. Each type pairs an activity with the launcher alias
 `LauncherIconController` enables for it, so the icon matches the app being imitated.
 
-- **Calendar:** `ui/CalendarActivity.java` — long press the year to dismiss the disguise.
+- **Calendar:** `ui/CalendarActivity.java` — long press the year to dismiss the disguise. The
+  settings can require a longer hold, or a secret date to hold instead of the year; the rules
+  are in `utils/CalendarUnlock.java` (covered by the JVM unit tests) and the timing in
+  `utils/HoldGesture.java`.
 - **Calculator:** `ui/CalculatorActivity.java` — type the equation set in the settings and press
   `=` to dismiss the disguise. Arithmetic lives in `utils/CalculatorEngine.java` and the keypad
   rules in `utils/CalculatorInput.java`; both are free of Android dependencies and covered by the
@@ -117,6 +120,11 @@ When disguise is on, `AmarokActivity.onResume()` opens the disguise activity of 
 
 Either way, dismissing the disguise calls `SecurityUtil.dismissDisguise()` and finishes, which
 hands the user back to the app lock if one is set.
+
+The app lock (`ui/SecurityAuthActivity.java`) offers the biometric prompt once, then falls back to
+the password. The secret dial code (`receivers/DialerReceiver.java`) also posts a tap-to-open
+notification on Android 10+, where opening a screen from the background is blocked unless Amarok
+may draw over other apps.
 
 ### 7. Quick Hide
 

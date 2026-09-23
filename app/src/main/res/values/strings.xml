@@ -181,6 +181,20 @@
     <string name="close_disguise_spotlight_tip">Long press the <font fgcolor="#FCCA3E"><b>Year Number</b></font> to access Amarok.</string>
     <string name="close_calculator_disguise_spotlight_tip">Type <font fgcolor="#FCCA3E"><b>^1</b></font> and press = to access Amarok.</string>
     <string name="spotlight_do_not_show_again">DON\'T SHOW AGAIN</string>
+    <string name="calendar_hold_time">Hold time</string>
+    <string name="calendar_hold_time_default">Standard long press</string>
+    <plurals name="calendar_hold_time_seconds">
+        <item quantity="one">Hold for %d second</item>
+        <item quantity="other">Hold for %d seconds</item>
+    </plurals>
+    <string name="calendar_secret_date">Secret date</string>
+    <string name="calendar_secret_date_off">Off. Hold the year to open Amarok.</string>
+    <string name="calendar_secret_date_on">Hold %s to open Amarok. Holding the year does nothing.</string>
+    <string name="calendar_secret_date_change">Change</string>
+    <string name="calendar_secret_date_turn_off">Turn off</string>
+    <string name="use_password">Use password</string>
+    <string name="secret_code_channel_name">Secret code</string>
+    <string name="secret_code_notification_title">Tap to continue</string>
     <string name="filehider_not_ava_title">File hiding unavailable</string>
     <string name="filehider_none">Disabled</string>
     <string name="filehider_none_description">Disable file hiding.</string>
