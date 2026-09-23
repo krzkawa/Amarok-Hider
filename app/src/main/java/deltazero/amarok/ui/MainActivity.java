@@ -19,6 +19,7 @@ import deltazero.amarok.PrefMgr;
 import deltazero.amarok.R;
 import deltazero.amarok.apphider.NoneAppHider;
 import deltazero.amarok.filehider.NoneFileHider;
+import deltazero.amarok.receivers.DialerReceiver;
 import deltazero.amarok.ui.settings.SettingsActivity;
 import deltazero.amarok.ui.settings.SwitchAppHiderActivity;
 import deltazero.amarok.ui.settings.SwitchFileHiderActivity;
@@ -190,6 +191,7 @@ public class MainActivity extends AmarokActivity {
 
     @Override
     protected void onResume() {
+        DialerReceiver.cancelOpenNotification(this);
         refreshUi(Hider.getState());
         super.onResume();
     }

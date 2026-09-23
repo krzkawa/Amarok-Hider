@@ -37,6 +37,8 @@ import java.util.List;
 
 import deltazero.amarok.PrefMgr;
 import deltazero.amarok.R;
+import deltazero.amarok.utils.CalendarUnlock;
+import deltazero.amarok.utils.HoldGesture;
 import deltazero.amarok.utils.SecurityUtil;
 
 public class CalendarActivity extends AppCompatActivity {
@@ -46,6 +48,9 @@ public class CalendarActivity extends AppCompatActivity {
 
     LocalDate selectedDate = null;
     CalendarDay selectedDateDay = null;
+
+    LocalDate secretDate;
+    long holdMillis;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -61,6 +66,9 @@ public class CalendarActivity extends AppCompatActivity {
         WindowCompat.enableEdgeToEdge(getWindow());
         
         setContentView(R.layout.activity_calendar);
+
+        secretDate = CalendarUnlock.parseSecretDate(PrefMgr.getCalendarSecretDate());
+        holdMillis = CalendarUnlock.holdMillis(PrefMgr.getCalendarHoldSeconds());
 
         calendarView = findViewById(R.id.calendar_view);
         tvMonth = findViewById(R.id.calendar_tv_month_text);
@@ -81,11 +89,7 @@ public class CalendarActivity extends AppCompatActivity {
             return null;
         });
 
-        tvYear.setOnLongClickListener(v -> {
-            SecurityUtil.dismissDisguise();
-            finish();
-            return true;
-        });
+        HoldGesture.attach(tvYear, holdMillis, () -> onHeld(null));
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -94,9 +98,20 @@ public class CalendarActivity extends AppCompatActivity {
             }
         });
 
-        if (PrefMgr.getDoShowQuitDisguiseInstuct()) {
+        // The tip points at the year, which a secret date replaces.
+        if (PrefMgr.getDoShowQuitDisguiseInstuct() && secretDate == null) {
             showInstruction();
         }
+    }
+
+    /**
+     * @param heldDate The date held, or null for the year.
+     */
+    private void onHeld(@Nullable LocalDate heldDate) {
+        if (!CalendarUnlock.opens(secretDate, heldDate))
+            return;
+        SecurityUtil.dismissDisguise();
+        finish();
     }
 
     @SuppressLint("MissingInflatedId")
@@ -195,6 +210,8 @@ public class CalendarActivity extends AppCompatActivity {
                 selectedDateDay = day;
                 calendarView.notifyDayChanged(day);
             });
+            if (secretDate != null)
+                HoldGesture.attach(view, holdMillis, () -> onHeld(day.getDate()));
         }
     }
 }

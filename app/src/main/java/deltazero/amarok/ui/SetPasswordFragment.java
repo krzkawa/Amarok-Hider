@@ -101,4 +101,16 @@ public class SetPasswordFragment extends BottomSheetDialogFragment {
         if (callback != null) callback.onSetPassword(null);
         super.onCancel(dialog);
     }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // The fragment can outlive its views, which would otherwise be kept alive through these.
+        etlPassword = null;
+        etlConfirmPassword = null;
+        etPassword = null;
+        etConfirmPassword = null;
+        btOk = null;
+        btCancel = null;
+    }
 }

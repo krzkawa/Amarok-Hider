@@ -16,6 +16,14 @@ public class SecurityAuthActivity extends AppCompatActivity {
     private BiometricPrompt biometricPrompt;
     private BiometricPrompt.PromptInfo biometricPromptInfo;
 
+    /**
+     * The biometric prompt is offered once. On some devices it pauses this activity, so offering
+     * it on every resume brought it straight back each time it was dismissed, with no way to reach
+     * the password.
+     */
+    private boolean biometricOffered = false;
+    private static final String BIOMETRIC_OFFERED = "biometricOffered";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -26,6 +34,9 @@ public class SecurityAuthActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_empty);
+
+        if (savedInstanceState != null)
+            biometricOffered = savedInstanceState.getBoolean(BIOMETRIC_OFFERED, false);
 
         passwordAuthFragment = new PasswordAuthFragment().setOnVerifiedCallback(isSucceeded -> {
             if (isSucceeded) onSuccess();
@@ -46,7 +57,7 @@ public class SecurityAuthActivity extends AppCompatActivity {
 
         biometricPromptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle(getString(R.string.unlock_required))
-                .setNegativeButtonText(getString(android.R.string.cancel))
+                .setNegativeButtonText(getString(R.string.use_password))
                 .build();
     }
 
@@ -54,8 +65,18 @@ public class SecurityAuthActivity extends AppCompatActivity {
     protected void onResume() {
         if (!SecurityUtil.isUnlockRequired()) finish();
         super.onResume();
-        if (PrefMgr.getEnableAmarokBiometricAuth()) biometricAuthenticate();
-        else passwordAuthenticate();
+        if (PrefMgr.getEnableAmarokBiometricAuth() && !biometricOffered) {
+            biometricOffered = true;
+            biometricAuthenticate();
+        } else {
+            passwordAuthenticate();
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(BIOMETRIC_OFFERED, biometricOffered);
     }
 
     protected void onSuccess() {
