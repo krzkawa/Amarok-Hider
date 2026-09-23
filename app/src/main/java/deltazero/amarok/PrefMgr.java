@@ -118,6 +118,60 @@ public final class PrefMgr {
         mPrefEditor.apply();
     }
 
+    public static final String ICON_ONLY_PKG_NAMES = "iconOnlyPkgNames";
+    public static final String KEEP_DISABLED_PKG_NAMES = "keepDisabledPkgNames";
+    public static final String WERE_DISABLED_PKG_NAMES = "wereDisabledPkgNames";
+    public static final String ICON_HIDDEN_COMPONENTS = "iconHiddenComponents";
+
+    /**
+     * Apps whose launcher icon alone is hidden, so they keep running.
+     */
+    public static Set<String> getIconOnlyApps() {
+        return new HashSet<>(mPrefs.getStringSet(ICON_ONLY_PKG_NAMES, new HashSet<>()));
+    }
+
+    public static void setIconOnlyApps(Set<String> pkgNames) {
+        mPrefEditor.putStringSet(ICON_ONLY_PKG_NAMES, pkgNames);
+        mPrefEditor.apply();
+    }
+
+    /**
+     * Apps that stay disabled when everything else is unhidden.
+     */
+    public static Set<String> getKeepDisabledApps() {
+        return new HashSet<>(mPrefs.getStringSet(KEEP_DISABLED_PKG_NAMES, new HashSet<>()));
+    }
+
+    public static void setKeepDisabledApps(Set<String> pkgNames) {
+        mPrefEditor.putStringSet(KEEP_DISABLED_PKG_NAMES, pkgNames);
+        mPrefEditor.apply();
+    }
+
+    /**
+     * Apps that were already disabled when they were hidden, recorded so unhiding leaves them so.
+     */
+    public static Set<String> getWereDisabledApps() {
+        return new HashSet<>(mPrefs.getStringSet(WERE_DISABLED_PKG_NAMES, new HashSet<>()));
+    }
+
+    public static void setWereDisabledApps(Set<String> pkgNames) {
+        mPrefEditor.putStringSet(WERE_DISABLED_PKG_NAMES, pkgNames);
+        mPrefEditor.apply();
+    }
+
+    /**
+     * Launcher activities turned off to hide an icon, as "package/class", recorded so unhiding
+     * turns the same ones back on.
+     */
+    public static Set<String> getIconHiddenComponents() {
+        return new HashSet<>(mPrefs.getStringSet(ICON_HIDDEN_COMPONENTS, new HashSet<>()));
+    }
+
+    public static void setIconHiddenComponents(Set<String> components) {
+        mPrefEditor.putStringSet(ICON_HIDDEN_COMPONENTS, components);
+        mPrefEditor.apply();
+    }
+
     public static BaseAppHider getAppHider(Context context) {
         return switch (mPrefs.getInt(APP_HIDER_MODE, 0)) {
             case 0 -> new NoneAppHider(context);

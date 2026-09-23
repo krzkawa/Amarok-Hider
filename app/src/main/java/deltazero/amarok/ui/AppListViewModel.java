@@ -85,6 +85,22 @@ public class AppListViewModel extends AndroidViewModel {
         PrefMgr.setHideApps(hiddenApps);
     }
 
+    public void setIconOnly(AppInfo app, boolean iconOnly) {
+        Set<String> apps = PrefMgr.getIconOnlyApps();
+        if (iconOnly) apps.add(app.packageName());
+        else apps.remove(app.packageName());
+        PrefMgr.setIconOnlyApps(apps);
+        updateAppList();
+    }
+
+    public void setKeepDisabled(AppInfo app, boolean keepDisabled) {
+        Set<String> apps = PrefMgr.getKeepDisabledApps();
+        if (keepDisabled) apps.add(app.packageName());
+        else apps.remove(app.packageName());
+        PrefMgr.setKeepDisabledApps(apps);
+        updateAppList();
+    }
+
     private void updateAppList() {
         executor.execute(() -> {
             String query = searchQuery.getValue();

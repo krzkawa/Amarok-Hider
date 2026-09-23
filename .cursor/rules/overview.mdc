@@ -57,6 +57,18 @@ under `app/src/test/`.
   - **DSM Mode:** `DsmAppHider.java`
   - **Dhizuku Mode:** `DhizukuAppHider.java`
 
+Per-app options, set by long-pressing a ticked app in `SetHideAppActivity`:
+
+- **Icon only:** turns off just the app's launcher activities, so it keeps running (Root and
+  Shizuku only; `BaseAppHider.supportsComponentHiding()`). The components turned off are recorded
+  in `PrefMgr` so unhiding turns the same ones back on.
+- **Keep disabled:** unhiding makes the app visible without enabling it. Apps that were already
+  disabled before hiding get the same treatment, recorded at hide time by `AppStateUtil`.
+
+`AppHidePlan` splits the hidden list between those treatments; it has no Android dependency and is
+covered by the JVM unit tests. `Hider` catches app-hiding failures, so a broken mode (e.g. Dhizuku
+after its owner rights are revoked) reports an error and the files are still processed.
+
 ### 4. Settings and Preferences
 
 - Settings persistence is handled through the `PrefMgr` class (`app/src/main/java/deltazero/amarok/PrefMgr.java`) with SharedPreferences.

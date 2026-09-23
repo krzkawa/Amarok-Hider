@@ -18,7 +18,9 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import deltazero.amarok.AmarokActivity;
+import deltazero.amarok.PrefMgr;
 import deltazero.amarok.R;
+import deltazero.amarok.utils.AppInfoUtil.AppInfo;
 
 public class SetHideAppActivity extends AmarokActivity {
 
@@ -54,11 +56,12 @@ public class SetHideAppActivity extends AmarokActivity {
 
     private void setupToolbar() {
         setSupportActionBar(tbToolBar);
+        tbToolBar.setSubtitle(R.string.app_options_hint);
         tbToolBar.setNavigationOnClickListener(v -> finish());
     }
 
     private void setupRecyclerView() {
-        adapter = new AppListAdapter(app -> viewModel.toggleAppHidden(app));
+        adapter = new AppListAdapter(app -> viewModel.toggleAppHidden(app), this::showAppOptions);
         rvAppList.setAdapter(adapter);
         rvAppList.setLayoutManager(new LinearLayoutManager(this));
     }
@@ -123,6 +126,33 @@ public class SetHideAppActivity extends AmarokActivity {
                 return false;
             }
         });
+    }
+
+    private void showAppOptions(AppInfo app) {
+        if (!PrefMgr.getHideApps().contains(app.packageName())) {
+            Toast.makeText(this, R.string.app_options_need_hidden, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean iconOnlySupported = PrefMgr.getAppHider(this).supportsComponentHiding();
+        CharSequence[] labels = {
+                getString(iconOnlySupported ? R.string.app_option_icon_only : R.string.app_option_icon_only_unsupported),
+                getString(R.string.app_option_keep_disabled)
+        };
+        boolean[] checked = {
+                PrefMgr.getIconOnlyApps().contains(app.packageName()),
+                PrefMgr.getKeepDisabledApps().contains(app.packageName())
+        };
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(app.label())
+                .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> {
+                    if (which == 0) viewModel.setIconOnly(app, isChecked);
+                    else viewModel.setKeepDisabled(app, isChecked);
+                    adapter.notifyDataSetChanged();
+                })
+                .setPositiveButton(R.string.ok, null)
+                .show();
     }
 
     private void setupSearchView(SearchView searchView) {

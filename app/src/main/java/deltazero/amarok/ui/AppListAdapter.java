@@ -24,9 +24,14 @@ public class AppListAdapter extends ListAdapter<AppInfo, AppListAdapter.AppListH
         void onAppToggled(AppInfo app);
     }
 
-    private final OnAppToggleListener listener;
+    public interface OnAppLongClickListener {
+        void onAppLongClicked(AppInfo app);
+    }
 
-    public AppListAdapter(OnAppToggleListener listener) {
+    private final OnAppToggleListener listener;
+    private final OnAppLongClickListener longClickListener;
+
+    public AppListAdapter(OnAppToggleListener listener, OnAppLongClickListener longClickListener) {
         super(new DiffUtil.ItemCallback<>() {
             @Override
             public boolean areItemsTheSame(@NonNull AppInfo oldItem, @NonNull AppInfo newItem) {
@@ -39,6 +44,7 @@ public class AppListAdapter extends ListAdapter<AppInfo, AppListAdapter.AppListH
             }
         });
         this.listener = listener;
+        this.longClickListener = longClickListener;
     }
 
     @NonNull
@@ -51,7 +57,7 @@ public class AppListAdapter extends ListAdapter<AppInfo, AppListAdapter.AppListH
     @Override
     public void onBindViewHolder(@NonNull AppListHolder holder, int position) {
         AppInfo app = getCurrentList().get(position);
-        holder.bind(app, listener);
+        holder.bind(app, listener, longClickListener);
     }
 
     public static class AppListHolder extends RecyclerView.ViewHolder {
@@ -69,10 +75,10 @@ public class AppListAdapter extends ListAdapter<AppInfo, AppListAdapter.AppListH
             ivAppIcon = view.findViewById(R.id.hideapp_iv_appicon);
         }
 
-        void bind(AppInfo app, OnAppToggleListener listener) {
+        void bind(AppInfo app, OnAppToggleListener listener, OnAppLongClickListener longClickListener) {
             currentApp = app;
             tvAppName.setText(app.label());
-            tvPkgName.setText(app.packageName());
+            tvPkgName.setText(describe(app.packageName()));
             ivAppIcon.setImageDrawable(app.icon());
             cbIsHidden.setChecked(PrefMgr.getHideApps().contains(app.packageName()));
 
@@ -81,6 +87,25 @@ public class AppListAdapter extends ListAdapter<AppInfo, AppListAdapter.AppListH
                     listener.onAppToggled(currentApp);
                 }
             });
+
+            itemView.setOnLongClickListener(v -> {
+                if (currentApp == null) return false;
+                longClickListener.onAppLongClicked(currentApp);
+                return true;
+            });
+        }
+
+        /**
+         * The package name, followed by the options set for the app, if any.
+         */
+        private CharSequence describe(String pkgName) {
+            var context = itemView.getContext();
+            var text = new StringBuilder(pkgName);
+            if (PrefMgr.getIconOnlyApps().contains(pkgName))
+                text.append(" · ").append(context.getString(R.string.app_tag_icon_only));
+            if (PrefMgr.getKeepDisabledApps().contains(pkgName))
+                text.append(" · ").append(context.getString(R.string.app_tag_keep_disabled));
+            return text;
         }
     }
 }

@@ -27,18 +27,40 @@ public class DhizukuAppHider extends BaseAppHider {
     @Override
     public void hide(Set<String> pkgNames, boolean disableOnly) {
         // Dhizuku only supports setApplicationHidden, so disableOnly parameter is ignored
-        setDelegatedScopes();
-        for (var pkgName : pkgNames) {
-            devicePolicyManager.setApplicationHidden(null, pkgName, true);
-        }
+        setApplicationsHidden(pkgNames, true);
     }
 
     @Override
-    public void unhide(Set<String> pkgNames) {
-        setDelegatedScopes();
-        for (var pkgName : pkgNames) {
-            devicePolicyManager.setApplicationHidden(null, pkgName, false);
+    public void unhide(Set<String> pkgNames, Set<String> leaveDisabled) {
+        // Dhizuku only hides apps and never disables them, so there is nothing to leave disabled
+        setApplicationsHidden(pkgNames, false);
+    }
+
+    /**
+     * When Dhizuku has lost its device owner rights these calls throw. They are caught per app,
+     * so one failure does not stop the rest, and reported once for the whole run.
+     *
+     * @throws IllegalStateException If any app could not be changed.
+     */
+    private void setApplicationsHidden(Set<String> pkgNames, boolean hidden) {
+        try {
+            setDelegatedScopes();
+        } catch (Exception e) {
+            Log.w("DhizukuHider", "Failed to set delegated scopes.", e);
         }
+
+        Exception lastError = null;
+        for (var pkgName : pkgNames) {
+            try {
+                devicePolicyManager.setApplicationHidden(null, pkgName, hidden);
+            } catch (Exception e) {
+                Log.w("DhizukuHider", String.format("Failed to %s %s", hidden ? "hide" : "unhide", pkgName), e);
+                lastError = e;
+            }
+        }
+
+        if (lastError != null)
+            throw new IllegalStateException(context.getString(R.string.dhizuku_not_working), lastError);
     }
 
     @Override
@@ -50,15 +72,22 @@ public class DhizukuAppHider extends BaseAppHider {
             return;
         }
 
-        if (Dhizuku.getVersionCode() < 5) {
-            Log.w("DhizukuHider", "Unsupported Dhizuku version: pre v5.x");
-            activationCallbackListener.onActivateCallback(this.getClass(), false, R.string.dhizuku_pre_v5);
-            return;
-        }
+        try {
+            if (Dhizuku.getVersionCode() < 5) {
+                Log.w("DhizukuHider", "Unsupported Dhizuku version: pre v5.x");
+                activationCallbackListener.onActivateCallback(this.getClass(), false, R.string.dhizuku_pre_v5);
+                return;
+            }
 
-        if (Dhizuku.isPermissionGranted()) {
-            Log.i("DhizukuHider", "Dhizuku available.");
-            activationCallbackListener.onActivateCallback(this.getClass(), true, 0);
+            if (Dhizuku.isPermissionGranted()) {
+                Log.i("DhizukuHider", "Dhizuku available.");
+                activationCallbackListener.onActivateCallback(this.getClass(), true, 0);
+                return;
+            }
+        } catch (Exception e) {
+            // Dhizuku answers init() but its service is gone, e.g. after its owner rights were revoked.
+            Log.w("DhizukuHider", "Dhizuku not working.", e);
+            activationCallbackListener.onActivateCallback(this.getClass(), false, R.string.dhizuku_not_working);
             return;
         }
 

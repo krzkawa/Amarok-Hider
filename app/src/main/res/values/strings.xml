@@ -150,6 +150,19 @@
     <string name="filter">Filter</string>
     <string name="display_system_apps">Display system apps</string>
     <string name="display_root_apps">Display root-related apps</string>
+    <string name="app_options_hint">Long-press a ticked app for more options</string>
+    <string name="app_options_need_hidden">Tick the app first to set its options.</string>
+    <string name="app_option_icon_only">Hide the icon only, so the app keeps running</string>
+    <string name="app_option_icon_only_unsupported">Hide the icon only (needs Root or Shizuku mode)</string>
+    <string name="app_option_keep_disabled">Keep disabled after unhiding</string>
+    <string name="app_tag_icon_only">Icon only</string>
+    <string name="app_tag_keep_disabled">Stays disabled</string>
+    <string name="open_hidden_apps">Open Hidden Apps</string>
+    <string name="no_hidden_apps">No hidden apps yet.</string>
+    <string name="app_cannot_be_opened">This app has nothing to open.</string>
+    <string name="hide_apps_failed">Could not hide apps: %s</string>
+    <string name="unhide_apps_failed">Could not unhide apps: %s</string>
+    <string name="dhizuku_not_working">Dhizuku is not working. Check that it is still activated.</string>
     <string name="language">Language</string>
     <string name="follow_system">(Follow system)</string>
     <string name="language_description" translatable="false">Language / 语言 / Langue / Sprache / 言語</string>

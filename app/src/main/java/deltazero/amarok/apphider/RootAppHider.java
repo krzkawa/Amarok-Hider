@@ -28,9 +28,26 @@ public class RootAppHider extends BaseAppHider {
     }
 
     @Override
-    public void unhide(Set<String> pkgNames) {
-        for (String p : pkgNames)
-            Shell.cmd(String.format("pm unhide %s & pm enable %s", p, p)).submit();
+    public void unhide(Set<String> pkgNames, Set<String> leaveDisabled) {
+        for (String p : pkgNames) {
+            if (leaveDisabled.contains(p))
+                Shell.cmd(String.format("pm unhide %s", p)).submit();
+            else
+                Shell.cmd(String.format("pm unhide %s & pm enable %s", p, p)).submit();
+        }
+    }
+
+    @Override
+    public boolean supportsComponentHiding() {
+        return true;
+    }
+
+    @Override
+    public void setComponentsEnabled(Set<String> components, boolean enabled) {
+        for (String c : components) {
+            // Quoted, since nested class names carry a '$'.
+            Shell.cmd(String.format("pm %s '%s'", enabled ? "enable" : "disable", c)).submit();
+        }
     }
 
     @Override
