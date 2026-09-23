@@ -69,6 +69,9 @@ under `app/src/test/`.
 - Appearance: `AppearanceCategory.java`
 - Work Mode: `WorkModeCategory.java`
 - XHide: `XHideCategory.java`
+- Backup: `BackupCategory.java` exports and imports every setting, including the hidden apps and
+  folders, through `utils/SettingsBackup.java` (covered by the JVM unit tests). Keys in
+  `SettingsBackup.EXCLUDED_KEYS`, such as the password and the current hidden state, stay out.
 
 #### To Add a New Setting
 

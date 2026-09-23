@@ -173,8 +173,14 @@ public final class PrefMgr {
         mPrefEditor.apply();
     }
 
+    /**
+     * Update checks go to GitHub. F-Droid users get their updates from F-Droid, so the FOSS build
+     * only checks once asked to.
+     */
+    public static final boolean DEFAULT_ENABLE_AUTO_UPDATE = !"foss".equals(BuildConfig.FLAVOR);
+
     public static boolean getEnableAutoUpdate() {
-        return mPrefs.getBoolean(IS_ENABLE_AUTO_UPDATE, true);
+        return mPrefs.getBoolean(IS_ENABLE_AUTO_UPDATE, DEFAULT_ENABLE_AUTO_UPDATE);
     }
 
     public static void setEnableAutoUpdate(boolean isEnable) {
