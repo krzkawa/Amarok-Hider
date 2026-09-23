@@ -31,14 +31,20 @@ public class AutoHideUtil {
         @NonNull
         @Override
         public Result doWork() {
-            Log.i(TAG, "Auto hide triggered. Start hiding.");
-            Hider.hide(getApplicationContext());
+            // Already hidden: files added to a hidden folder since still need hiding.
+            if (PrefMgr.getIsHidden()) {
+                Log.i(TAG, "Auto hide triggered while hidden. Hiding new files.");
+                Hider.hideNewFiles(getApplicationContext());
+            } else {
+                Log.i(TAG, "Auto hide triggered. Start hiding.");
+                Hider.hide(getApplicationContext());
+            }
             return Result.success();
         }
     }
 
     public static void setAutoHide(Context context) {
-        if (!PrefMgr.getEnableAutoHide() || Hider.getState() == Hider.State.HIDDEN) return;
+        if (!PrefMgr.getEnableAutoHide()) return;
         Log.i(TAG, "Auto hide set. Delay: " + PrefMgr.getAutoHideDelay() + " minutes.");
         WorkManager.getInstance(context).enqueueUniqueWork(
                 AUTO_HIDE_WORK_NAME,

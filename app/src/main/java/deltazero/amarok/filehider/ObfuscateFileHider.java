@@ -19,6 +19,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import deltazero.amarok.PrefMgr;
@@ -83,9 +86,19 @@ public class ObfuscateFileHider extends BaseFileHider {
 
         Log.i(TAG, "Start to process file tree: " + targetDir);
 
+        // Renaming what is inside a folder counts as a change to the folder, which would bring
+        // every hidden folder to the top of a list sorted by date. Put the dates back afterwards.
+        Map<Path, FileTime> folderTimes = new HashMap<>();
+
         try {
 
             Files.walkFileTree(targetDir, new SimpleFileVisitor<>() {
+
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                    folderTimes.put(dir, attrs.lastModifiedTime());
+                    return FileVisitResult.CONTINUE;
+                }
 
                 @Override
                 public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
@@ -140,6 +153,9 @@ public class ObfuscateFileHider extends BaseFileHider {
                             Log.w(TAG, "Failed to remove the long name index of " + dir, ioException);
                         }
                     }
+
+                    // Before the rename below, which leaves a folder's own time alone.
+                    restoreModifiedTime(dir, folderTimes.remove(dir));
 
                     if (dir != targetDir)
                         processFilename(dir, method, FILENAME_NO_PROCESS_MARK, longFilenameIndex);
@@ -233,6 +249,12 @@ public class ObfuscateFileHider extends BaseFileHider {
 
         boolean is_succeeded = path.toFile().renameTo(newPath.toFile());
 
+        if (!is_succeeded && path.toFile().isDirectory() && newPath.toFile().isDirectory()) {
+            // The name is taken by a folder, e.g. an app recreated "Screenshots" while the original
+            // was hidden. Merge the two rather than leave one of them behind.
+            return mergeFolders(path, newPath);
+        }
+
         if (!is_succeeded) {
             Log.w(TAG, "Error when renaming file: " + path + " -> " + newPath);
 
@@ -243,6 +265,40 @@ public class ObfuscateFileHider extends BaseFileHider {
             return null;
         } else {
             return newPath;
+        }
+    }
+
+    /**
+     * Move the contents of a folder into the folder that holds the name it should take.
+     *
+     * @return The folder merged into, or null if nothing could be merged.
+     */
+    @Nullable
+    private Path mergeFolders(Path from, Path into) {
+        Log.i(TAG, "Merging " + from + " into " + into);
+        try {
+            // A name kept in an index has to stay beside that index, so those files stay put.
+            boolean complete = FolderMerger.merge(from, into, entry -> {
+                String name = entry.getFileName().toString();
+                return !name.equals(LongFilenameIndex.INDEX_FILENAME)
+                        && !FileHiderUtil.checkIsLongMarkInFilename(name);
+            });
+            if (!complete)
+                Log.w(TAG, "Some entries were left in " + from + ", as their names are taken.");
+            return into;
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to merge " + from + " into " + into, e);
+            return null;
+        }
+    }
+
+    private static void restoreModifiedTime(Path path, @Nullable FileTime modified) {
+        if (modified == null)
+            return;
+        try {
+            Files.setLastModifiedTime(path, modified);
+        } catch (IOException | SecurityException e) {
+            Log.d(TAG, "Unable to restore the modified time of " + path, e);
         }
     }
 
