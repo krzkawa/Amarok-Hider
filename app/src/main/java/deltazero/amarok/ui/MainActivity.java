@@ -1,17 +1,27 @@
 package deltazero.amarok.ui;
 
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.hjq.permissions.XXPermissions;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import deltazero.amarok.AmarokActivity;
 import deltazero.amarok.Hider;
@@ -31,7 +41,7 @@ public class MainActivity extends AmarokActivity {
     public final static String TAG = "Main";
     private ImageView ivStatusImg;
     private TextView tvStatusInfo, tvStatus, tvMoto;
-    private MaterialButton btChangeStatus, btSetHideFiles, btSetHideApps;
+    private MaterialButton btChangeStatus, btSetHideFiles, btSetHideApps, btOpenHiddenApps;
     private CircularProgressIndicator piProcessStatus;
     private KonfettiView konfettiView;
 
@@ -49,6 +59,7 @@ public class MainActivity extends AmarokActivity {
         btChangeStatus = findViewById(R.id.main_bt_change_status);
         btSetHideApps = findViewById(R.id.main_bt_set_hide_apps);
         btSetHideFiles = findViewById(R.id.main_bt_set_hide_files);
+        btOpenHiddenApps = findViewById(R.id.main_bt_open_hidden_apps);
         piProcessStatus = findViewById(R.id.main_pi_process_status);
         konfettiView = findViewById(R.id.main_konfetti_view);
 
@@ -128,6 +139,62 @@ public class MainActivity extends AmarokActivity {
 
     }
 
+    /**
+     * Lists the apps on the hidden list so they can be opened straight from here, instead of
+     * hunted for in the app drawer after unhiding.
+     */
+    public void openHiddenApps(View view) {
+
+        if (Hider.getState() != Hider.State.VISIBLE) {
+            Toast.makeText(this, R.string.setting_not_ava_when_hidden, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        var pm = getPackageManager();
+        var apps = new ArrayList<ApplicationInfo>();
+        for (String pkgName : PrefMgr.getHideApps()) {
+            try {
+                apps.add(pm.getApplicationInfo(pkgName, 0));
+            } catch (PackageManager.NameNotFoundException ignored) {
+                // Uninstalled since it was added.
+            }
+        }
+
+        if (apps.isEmpty()) {
+            Toast.makeText(this, R.string.no_hidden_apps, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        apps.sort(Comparator.comparing(a -> pm.getApplicationLabel(a).toString()));
+
+        var adapter = new ArrayAdapter<ApplicationInfo>(this, R.layout.item_launch_app, apps) {
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                View item = convertView != null ? convertView
+                        : getLayoutInflater().inflate(R.layout.item_launch_app, parent, false);
+                ApplicationInfo app = getItem(position);
+                assert app != null;
+                ((ImageView) item.findViewById(R.id.launch_app_iv_icon)).setImageDrawable(pm.getApplicationIcon(app));
+                ((TextView) item.findViewById(R.id.launch_app_tv_label)).setText(pm.getApplicationLabel(app));
+                return item;
+            }
+        };
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.open_hidden_apps)
+                .setAdapter(adapter, (dialog, which) -> {
+                    Intent launchIntent = pm.getLaunchIntentForPackage(apps.get(which).packageName);
+                    if (launchIntent == null) {
+                        Toast.makeText(this, R.string.app_cannot_be_opened, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    startActivity(launchIntent);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
     public void showMoreSettings(View view) {
 
         startActivity(new Intent(this, SettingsActivity.class));
@@ -163,6 +230,7 @@ public class MainActivity extends AmarokActivity {
                 btChangeStatus.setIconResource(R.drawable.ic_wolf);
                 btSetHideFiles.setEnabled(false);
                 btSetHideApps.setEnabled(false);
+                btOpenHiddenApps.setEnabled(false);
                 tvStatus.setText(getText(R.string.hidden_status));
                 tvStatusInfo.setText(getText(R.string.hidden_moto));
             }
@@ -177,6 +245,7 @@ public class MainActivity extends AmarokActivity {
                 btChangeStatus.setIconResource(R.drawable.ic_paw);
                 btSetHideFiles.setEnabled(true);
                 btSetHideApps.setEnabled(true);
+                btOpenHiddenApps.setEnabled(true);
                 tvStatus.setText(getText(R.string.visible_status));
                 tvStatusInfo.setText(getText(R.string.visible_moto));
             }

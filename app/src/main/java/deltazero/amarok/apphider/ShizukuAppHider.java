@@ -1,6 +1,7 @@
 package deltazero.amarok.apphider;
 
 import android.annotation.SuppressLint;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.IBinder;
@@ -9,6 +10,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Set;
 
 import deltazero.amarok.BuildConfig;
@@ -124,13 +126,84 @@ public class ShizukuAppHider extends BaseAppHider {
     }
 
     @Override
-    public void unhide(Set<String> pkgNames) {
+    public void unhide(Set<String> pkgNames, Set<String> leaveDisabled) {
         if (!Shizuku.pingBinder()) {
             Log.w("ShizukuHider", "Binder not available.");
             return;
         }
-        setAppDisabled(false, pkgNames);
+        var toEnable = new HashSet<>(pkgNames);
+        toEnable.removeAll(leaveDisabled);
+        setAppDisabled(false, toEnable);
         setAppHidden(false, pkgNames);
+    }
+
+    @Override
+    public boolean supportsComponentHiding() {
+        return true;
+    }
+
+    @SuppressLint("PrivateApi")
+    @Override
+    public void setComponentsEnabled(Set<String> components, boolean enabled) {
+        /*
+        Call android.content.pm.IPackageManager.setComponentEnabledSetting with reflection.
+        Via Shizuku wrapper. Android 14 added a trailing callingPackage argument, so match on the
+        name and take whichever version the system has.
+         */
+
+        if (!Shizuku.pingBinder()) {
+            Log.w("ShizukuHider", "Binder not available.");
+            return;
+        }
+
+        Method mSetComponentEnabledSetting = null;
+        Object iPmInstance;
+
+        try {
+            Class<?> iPmClass = Class.forName("android.content.pm.IPackageManager");
+
+            Class<?> iPmStub = Class.forName("android.content.pm.IPackageManager$Stub");
+            Method asInterfaceMethod = iPmStub.getMethod("asInterface", IBinder.class);
+            iPmInstance = asInterfaceMethod.invoke(null, new ShizukuBinderWrapper(SystemServiceHelper.getSystemService("package")));
+
+            for (Method m : iPmClass.getMethods()) {
+                if (m.getName().equals("setComponentEnabledSetting")
+                        && m.getParameterTypes().length >= 4
+                        && m.getParameterTypes()[0] == ComponentName.class) {
+                    mSetComponentEnabledSetting = m;
+                    break;
+                }
+            }
+            if (mSetComponentEnabledSetting == null)
+                throw new NoSuchMethodException("setComponentEnabledSetting");
+        } catch (Exception e) {
+            Log.e("ShizukuHider", e.toString());
+            Toast.makeText(context, R.string.shizuku_hidden_api_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        int newState = enabled
+                ? PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+                : PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+        int userId = Os.getuid() / 100000;
+
+        for (String c : components) {
+            ComponentName component = ComponentName.unflattenFromString(c);
+            if (component == null) {
+                Log.w("ShizukuHider", "Invalid component: " + c);
+                continue;
+            }
+            try {
+                if (mSetComponentEnabledSetting.getParameterTypes().length == 4)
+                    mSetComponentEnabledSetting.invoke(iPmInstance, component, newState, 0, userId);
+                else
+                    mSetComponentEnabledSetting.invoke(iPmInstance, component, newState, 0, userId,
+                            BuildConfig.APPLICATION_ID);
+                Log.i("ShizukuHider", (enabled ? "Enabled: " : "Disabled: ") + c);
+            } catch (Exception e) {
+                Log.w("ShizukuHider", e.toString());
+            }
+        }
     }
 
     @Override

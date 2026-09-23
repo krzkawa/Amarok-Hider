@@ -39,7 +39,8 @@ public class DsmAppHider extends BaseAppHider {
     }
 
     @Override
-    public void unhide(Set<String> pkgNames) {
+    public void unhide(Set<String> pkgNames, Set<String> leaveDisabled) {
+        // DSM only hides apps and never disables them, so there is nothing to leave disabled
         if (!dpm.isAdminActive(admin)) {
             Log.w("DsmAppHider", "Admin not active. Failed to unhide apps.");
             Toast.makeText(context, R.string.hide_app_failed_admin_inactive, Toast.LENGTH_LONG).show();
