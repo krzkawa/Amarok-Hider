@@ -149,6 +149,8 @@ dependencies {
     implementation 'org.apache.maven:maven-artifact:3.9.11'
 
     testImplementation 'junit:junit:4.13.2'
+    // android.jar only has stubs of org.json, so the JVM unit tests need the real thing.
+    testImplementation 'org.json:json:20250517'
 
     // F-Droid disallow `api.xposed.info` since it's not a "Trusted Maven Repository".
     // So we create a mirror GitHub repository and obtain the library from `jitpack.io` instead.

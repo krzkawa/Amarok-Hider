@@ -59,7 +59,7 @@ public class UpdateCategory extends BaseCategory {
         autoUpdatePref.setIcon(R.drawable.autorenew_black_24dp);
         autoUpdatePref.setTitle(R.string.check_update_on_start);
         autoUpdatePref.setSummary(R.string.check_update_on_start_description);
-        autoUpdatePref.setDefaultValue(true);
+        autoUpdatePref.setDefaultValue(PrefMgr.DEFAULT_ENABLE_AUTO_UPDATE);
         addPreference(autoUpdatePref);
     }
 }

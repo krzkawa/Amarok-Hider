@@ -98,6 +98,7 @@ public class SettingsActivity extends AmarokActivity implements
                     new QuickHideCategory(requireActivity(), screen),
                     new AppearanceCategory(requireActivity(), screen),
                     new UpdateCategory(requireActivity(), screen),
+                    new BackupCategory(requireActivity(), screen, this),
                     new AboutCategory(requireActivity(), screen),
             };
 
