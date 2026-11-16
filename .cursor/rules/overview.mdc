@@ -122,8 +122,11 @@ hands the user back to the app lock if one is set.
 
 Provides multiple triggers for instant hide/unhide operations:
 
-- **Quick Settings Tile:** `QSTileService.java`
-- **Quick Hide Service:** `QuickHideService.java` (includes notification and panic button functionality)
+- **Quick Settings Tile:** `QSTileService.java`. Shows a neutral On/Off subtitle; the "Discreet
+  tile" setting swaps its name and icon for neutral ones.
+- **Quick Hide Service:** `QuickHideService.java` (includes notification and panic button functionality).
+  `onStartCommand` runs more than once per service, so the panic button is built only on the
+  first call. With "Keep notification" on, the notification's delete intent posts it again.
 - **Auto Hide on Screen Off:** Implemented via `ScreenStatusReceiver.java` and `AutoHideUtil.java`
 - **Intent API:** Managed by `ActionReceiver.java`
 - **Widget:** `ToggleWidget.java`

@@ -125,6 +125,13 @@
     <string name="notification_permission_denied">Notification permission denied.</string>
     <string name="quick_hide_notification_title">Privacy not hidden</string>
     <string name="quick_hide_notification_content">Your privacy is not hidden. Click to hide.</string>
+    <string name="restore_dismissed_notification">Keep notification</string>
+    <string name="restore_dismissed_notification_description">Bring the notification back if it is swiped away.</string>
+    <string name="tile_on">On</string>
+    <string name="tile_off">Off</string>
+    <string name="discreet_tile">Discreet tile</string>
+    <string name="discreet_tile_description">Give the quick settings tile a neutral name and icon, so it does not reveal Amarok on the lock screen.</string>
+    <string name="discreet_tile_label">Display mode</string>
     <string name="invalid_action">Invalid intent received: %s</string>
     <string name="password">Password</string>
     <string name="unlock">Unlock</string>
