@@ -17,6 +17,7 @@ import deltazero.amarok.PrefMgr;
 import deltazero.amarok.R;
 import deltazero.amarok.filehider.BaseFileHider;
 import deltazero.amarok.filehider.ChmodFileHider;
+import deltazero.amarok.filehider.DotPrefixFileHider;
 import deltazero.amarok.filehider.NoMediaFileHider;
 import deltazero.amarok.filehider.NoneFileHider;
 import deltazero.amarok.filehider.ObfuscateFileHider;
@@ -24,7 +25,7 @@ import deltazero.amarok.filehider.ObfuscateFileHider;
 public class SwitchFileHiderActivity extends AmarokActivity {
 
     MaterialToolbar tbToolBar;
-    RadioButton rbDisabled, rbObfuscate, rbChmod, rbNoMedia;
+    RadioButton rbDisabled, rbObfuscate, rbChmod, rbNoMedia, rbDotPrefix;
     ImageView ivObfuscateSettings;
 
     @Override
@@ -36,6 +37,7 @@ public class SwitchFileHiderActivity extends AmarokActivity {
         rbObfuscate = findViewById(R.id.switch_filehider_radio_obfuscate);
         rbChmod = findViewById(R.id.switch_filehider_radio_chmod);
         rbNoMedia = findViewById(R.id.switch_filehider_radio_nomedia);
+        rbDotPrefix = findViewById(R.id.switch_filehider_radio_dot_prefix);
         tbToolBar = findViewById(R.id.switch_filehider_tb_toolbar);
         ivObfuscateSettings = findViewById(R.id.switch_filehider_iv_obfuscate_settings);
 
@@ -71,6 +73,8 @@ public class SwitchFileHiderActivity extends AmarokActivity {
                 // new ChmodFileHider(this).tryToActive(this::onActivationCallback);
             } else if (buttonID == R.id.switch_filehider_radio_nomedia) {
                 new NoMediaFileHider(this).tryToActive(this::onActivationCallback);
+            } else if (buttonID == R.id.switch_filehider_radio_dot_prefix) {
+                new DotPrefixFileHider(this).tryToActive(this::onActivationCallback);
             }
         }
     }
@@ -110,6 +114,7 @@ public class SwitchFileHiderActivity extends AmarokActivity {
         rbObfuscate.setChecked(false);
         rbNoMedia.setChecked(false);
         rbChmod.setChecked(false);
+        rbDotPrefix.setChecked(false);
 
         if (fileHider.isAssignableFrom(NoneFileHider.class)) {
             rbDisabled.setChecked(true);
@@ -119,6 +124,8 @@ public class SwitchFileHiderActivity extends AmarokActivity {
             rbChmod.setChecked(true);
         } else if (fileHider.isAssignableFrom(NoMediaFileHider.class)) {
             rbNoMedia.setChecked(true);
+        } else if (fileHider.isAssignableFrom(DotPrefixFileHider.class)) {
+            rbDotPrefix.setChecked(true);
         }
     }
 }

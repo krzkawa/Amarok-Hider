@@ -170,4 +170,36 @@ public final class Hider {
         Toast.makeText(context, message, Toast.LENGTH_LONG).show();
     }
 
+    /**
+     * While hidden, hide whatever has been added to the hidden folders since, without unhiding
+     * first. Apps are left as they are.
+     */
+    public static void hideNewFiles(Context context) {
+
+        threadHandler.post(() -> {
+
+            // Unhidden while this waited in the queue.
+            if (!PrefMgr.getIsHidden()) {
+                Log.i(TAG, "Skip hiding new files: not hidden.");
+                return;
+            }
+
+            Log.i(TAG, "Process 'hide new files' start.");
+            state.postValue(State.PROCESSING);
+
+            try {
+                PrefMgr.getFileHider(context).hide(PrefMgr.getHideFilePath());
+            } catch (InterruptedException e) {
+                Log.w(TAG, "Process 'hide new files' interrupted.");
+                return;
+            }
+
+            Log.i(TAG, "Process 'hide new files' finish.");
+            state.postValue(State.HIDDEN);
+
+            if (!PrefMgr.getDisableToasts())
+                Toast.makeText(context, R.string.new_files_hidden_toast, Toast.LENGTH_SHORT).show();
+        });
+    }
+
 }

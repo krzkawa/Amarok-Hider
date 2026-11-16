@@ -38,6 +38,8 @@ The `Hider` class serves as the central management system for both file and app 
 - **Implementations (all extend `BaseFileHider`):**
   - **Obfuscation:** Implemented in `ObfuscateFileHider`
   - **Chmod Mode:** Implemented in `ChmodFileHider`
+  - **Dot Prefix Mode:** Implemented in `DotPrefixFileHider`, which renames each hidden folder to
+    `.folder` (the renaming itself is in `DotPrefixRenamer`)
 
 Obfuscation renames each entry to the Base64 of its name plus an ending mark that records how its
 contents were processed. Base64 is a third longer than what it encodes, so a name of roughly 186
@@ -46,6 +48,12 @@ original name is kept in `LongFilenameIndex`, a `.amk_names!amk` file in the sam
 `!amk3`, `!amk4` and `!amk5` marks are the counterparts of `!amk`, `!amk1` and `!amk2` for names
 held that way. `LongFilenameIndex` has no Android dependency and is covered by the JVM unit tests
 under `app/src/test/`.
+
+When a folder cannot be renamed because a folder already holds the name it should take (it was
+recreated while hidden), `FolderMerger` moves its contents across without overwriting anything.
+Obfuscation also puts back each folder's modified time, so hiding does not reorder a list sorted
+by date. While hidden, `Hider.hideNewFiles()` runs the hide pass again for files added since; it
+is offered on the main screen and runs on screen off when auto hide is on.
 
 ### 3. App Hiding Implementations
 

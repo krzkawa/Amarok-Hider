@@ -34,6 +34,7 @@ public class MainActivity extends AmarokActivity {
     private MaterialButton btChangeStatus, btSetHideFiles, btSetHideApps;
     private CircularProgressIndicator piProcessStatus;
     private KonfettiView konfettiView;
+    private MaterialButton btHideNewFiles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +52,7 @@ public class MainActivity extends AmarokActivity {
         btSetHideFiles = findViewById(R.id.main_bt_set_hide_files);
         piProcessStatus = findViewById(R.id.main_pi_process_status);
         konfettiView = findViewById(R.id.main_konfetti_view);
+        btHideNewFiles = findViewById(R.id.main_bt_hide_new_files);
 
         // Init UI
         refreshUi(Hider.getState());
@@ -149,8 +151,13 @@ public class MainActivity extends AmarokActivity {
         startActivity(new Intent(this, SetHideFilesActivity.class));
     }
 
+    public void hideNewFiles(View view) {
+        if (Hider.getState() == Hider.State.HIDDEN) Hider.hideNewFiles(this);
+    }
+
     public void refreshUi(Hider.State state) {
         tvMoto.setText(R.string.moto);
+        btHideNewFiles.setVisibility(state == Hider.State.HIDDEN ? View.VISIBLE : View.GONE);
         switch (state) {
             case HIDDEN -> {
                 // Not Processing
