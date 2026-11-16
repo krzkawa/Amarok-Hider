@@ -13,7 +13,13 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import deltazero.amarok.apphider.AppHidePlan;
+
 import deltazero.amarok.ui.settings.SwitchAppHiderActivity;
+import deltazero.amarok.utils.AppStateUtil;
 import deltazero.amarok.utils.SecurityUtil;
 
 
@@ -86,10 +92,7 @@ public final class Hider {
             state.postValue(State.PROCESSING);
 
             try {
-                // Determine if we should only disable apps (skip hide step) when XHide is enabled
-                boolean disableOnly = PrefMgr.isXHideEnabled() && PrefMgr.getDisableOnlyWithXHide();
-
-                PrefMgr.getAppHider(context).hide(PrefMgr.getHideApps(), disableOnly);
+                hideApps(context);
                 PrefMgr.getFileHider(context).hide(PrefMgr.getHideFilePath());
             } catch (InterruptedException e) {
                 Log.w(TAG, "Process 'hide' interrupted.");
@@ -128,7 +131,7 @@ public final class Hider {
             state.postValue(State.PROCESSING);
 
             try {
-                PrefMgr.getAppHider(context).unhide(PrefMgr.getHideApps());
+                unhideApps(context);
                 PrefMgr.getFileHider(context).unhide(PrefMgr.getHideFilePath());
             } catch (InterruptedException e) {
                 Log.w(TAG, "Process 'unhide' interrupted.");
@@ -147,6 +150,64 @@ public final class Hider {
             new Handler(Looper.getMainLooper()).post(
                     () -> QuickHideService.startService(context));
         });
+    }
+
+    /**
+     * Hide the apps. A failure here is reported and does not stop the files from being hidden.
+     */
+    private static void hideApps(Context context) {
+        var appHider = PrefMgr.getAppHider(context);
+        Set<String> apps = PrefMgr.getHideApps();
+        Set<String> iconOnly = AppHidePlan.iconOnly(apps, PrefMgr.getIconOnlyApps(),
+                appHider.supportsComponentHiding());
+        Set<String> fully = AppHidePlan.fully(apps, iconOnly);
+
+        // Determine if we should only disable apps (skip hide step) when XHide is enabled
+        boolean disableOnly = PrefMgr.isXHideEnabled() && PrefMgr.getDisableOnlyWithXHide();
+
+        // Only while everything is visible does an app's state belong to the user. Once hidden,
+        // it is ours, so a second hide in a row must not overwrite what was recorded.
+        if (!PrefMgr.getIsHidden())
+            PrefMgr.setWereDisabledApps(AppStateUtil.findDisabled(context, fully));
+
+        Set<String> components = PrefMgr.getIconHiddenComponents();
+        components.addAll(AppStateUtil.findLauncherComponents(context, iconOnly));
+        PrefMgr.setIconHiddenComponents(components);
+
+        try {
+            appHider.setComponentsEnabled(components, false);
+            appHider.hide(fully, disableOnly);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Failed to hide apps.", e);
+            Toast.makeText(context, context.getString(R.string.hide_apps_failed, e.getMessage()),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Unhide the apps. A failure here is reported and does not stop the files from being unhidden.
+     */
+    private static void unhideApps(Context context) {
+        var appHider = PrefMgr.getAppHider(context);
+        Set<String> components = PrefMgr.getIconHiddenComponents();
+        Set<String> fully = AppHidePlan.fully(PrefMgr.getHideApps(), AppHidePlan.packagesOf(components));
+        Set<String> leaveDisabled = AppHidePlan.leaveDisabled(fully, PrefMgr.getKeepDisabledApps(),
+                PrefMgr.getWereDisabledApps());
+
+        try {
+            appHider.unhide(fully, leaveDisabled);
+            if (!components.isEmpty())
+                appHider.setComponentsEnabled(components, true);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Failed to unhide apps.", e);
+            Toast.makeText(context, context.getString(R.string.unhide_apps_failed, e.getMessage()),
+                    Toast.LENGTH_LONG).show();
+            // Keep the records, so the next attempt puts the same things back.
+            return;
+        }
+
+        PrefMgr.setIconHiddenComponents(new HashSet<>());
+        PrefMgr.setWereDisabledApps(new HashSet<>());
     }
 
     public static void forceUnhide(Context context) {
