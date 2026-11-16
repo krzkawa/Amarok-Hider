@@ -62,6 +62,14 @@ public class PasswordAuthFragment extends BottomSheetDialogFragment {
         return fragmentView;
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // The fragment can outlive its views, which would otherwise be kept alive through these.
+        etPassword = null;
+        tilPassword = null;
+    }
+
     public PasswordAuthFragment setOnVerifiedCallback(OnVerifiedCallback onVerifiedCallback) {
         this.onVerifiedCallback = onVerifiedCallback;
         return this;
@@ -70,7 +78,7 @@ public class PasswordAuthFragment extends BottomSheetDialogFragment {
     private void verify() {
 
         String password = PrefMgr.getAmarokPassword();
-        assert etPassword.getText() != null;
+        if (etPassword == null || etPassword.getText() == null) return;
 
         if (password == null || HashUtil.calculateHash(etPassword.getText().toString()).equals(password)) {
             if (onVerifiedCallback != null) onVerifiedCallback.onVerified(true);

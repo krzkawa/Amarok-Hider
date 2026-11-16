@@ -9,15 +9,29 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceScreen;
 
+import com.google.android.material.datepicker.CalendarConstraints;
+import com.google.android.material.datepicker.CompositeDateValidator;
+import com.google.android.material.datepicker.DateValidatorPointBackward;
+import com.google.android.material.datepicker.DateValidatorPointForward;
+import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.List;
 
 import deltazero.amarok.PrefMgr;
 import deltazero.amarok.R;
 import deltazero.amarok.ui.CountdownConfirmDialog;
 import deltazero.amarok.ui.SetPasswordFragment;
 import deltazero.amarok.utils.CalculatorInput;
+import deltazero.amarok.utils.CalendarUnlock;
 import deltazero.amarok.utils.DisguiseType;
 import deltazero.amarok.utils.HashUtil;
 import deltazero.amarok.utils.LauncherIconController;
@@ -27,6 +41,7 @@ import rikka.material.preference.MaterialSwitchPreference;
 public class PrivacyCategory extends BaseCategory {
 
     private MaterialSwitchPreference biometricPref;
+    private Preference[] calendarPrefs;
 
     public PrivacyCategory(@NonNull FragmentActivity activity, PreferenceScreen screen) {
         super(activity, screen);
@@ -93,6 +108,30 @@ public class PrivacyCategory extends BaseCategory {
             return true;
         });
 
+        var calendarHoldPref = new Preference(activity);
+        calendarHoldPref.setKey(PrefMgr.CALENDAR_HOLD_SECONDS);
+        calendarHoldPref.setIcon(R.drawable.timer_fill0_wght400_grad0_opsz24);
+        calendarHoldPref.setTitle(R.string.calendar_hold_time);
+        calendarHoldPref.setSummary(holdTimeLabel(PrefMgr.getCalendarHoldSeconds()));
+        calendarHoldPref.setOnPreferenceClickListener(preference -> {
+            showCalendarHoldDialog(calendarHoldPref);
+            return true;
+        });
+
+        var calendarSecretDatePref = new Preference(activity);
+        calendarSecretDatePref.setKey(PrefMgr.CALENDAR_SECRET_DATE);
+        calendarSecretDatePref.setIcon(R.drawable.calendar_month_24dp_1f1f1f_fill0_wght400_grad0_opsz24);
+        calendarSecretDatePref.setTitle(R.string.calendar_secret_date);
+        calendarSecretDatePref.setSummary(secretDateLabel());
+        calendarSecretDatePref.setOnPreferenceClickListener(preference -> {
+            showSecretDateDialog(calendarSecretDatePref);
+            return true;
+        });
+
+        calendarPrefs = new Preference[]{calendarHoldPref, calendarSecretDatePref};
+        for (var pref : calendarPrefs)
+            pref.setVisible(PrefMgr.getDisguiseType() == DisguiseType.CALENDAR);
+
         var disguiseTypePref = new Preference(activity);
         disguiseTypePref.setKey(PrefMgr.DISGUISE_TYPE);
         disguiseTypePref.setIcon(R.drawable.domino_mask_fill0_wght400_grad0_opsz24);
@@ -104,6 +143,8 @@ public class PrivacyCategory extends BaseCategory {
         });
         addPreference(disguiseTypePref);
         addPreference(unlockEquationPref);
+        addPreference(calendarHoldPref);
+        addPreference(calendarSecretDatePref);
 
         var hideAmarokIconPref = new MaterialSwitchPreference(activity);
         hideAmarokIconPref.setKey(PrefMgr.HIDE_AMAROK_ICON);
@@ -211,6 +252,8 @@ public class PrivacyCategory extends BaseCategory {
 
                     disguiseTypePref.setSummary(selected.labelResId);
                     unlockEquationPref.setVisible(selected == DisguiseType.CALCULATOR);
+                    for (var pref : calendarPrefs)
+                        pref.setVisible(selected == DisguiseType.CALENDAR);
 
                     // The launcher icon has to match whichever app Amarok is pretending to be.
                     if (PrefMgr.getEnableDisguise())
@@ -220,6 +263,85 @@ public class PrivacyCategory extends BaseCategory {
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    private String holdTimeLabel(int seconds) {
+        return seconds <= 0
+                ? activity.getString(R.string.calendar_hold_time_default)
+                : activity.getResources().getQuantityString(R.plurals.calendar_hold_time_seconds, seconds, seconds);
+    }
+
+    private String secretDateLabel() {
+        LocalDate date = CalendarUnlock.parseSecretDate(PrefMgr.getCalendarSecretDate());
+        return date == null
+                ? activity.getString(R.string.calendar_secret_date_off)
+                : activity.getString(R.string.calendar_secret_date_on,
+                DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(date));
+    }
+
+    private void showCalendarHoldDialog(Preference calendarHoldPref) {
+        int[] options = CalendarUnlock.HOLD_SECONDS_OPTIONS;
+        String[] labels = new String[options.length];
+        int checked = 0;
+        for (int i = 0; i < options.length; i++) {
+            labels[i] = holdTimeLabel(options[i]);
+            if (options[i] == PrefMgr.getCalendarHoldSeconds())
+                checked = i;
+        }
+
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(R.string.calendar_hold_time)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    PrefMgr.setCalendarHoldSeconds(options[which]);
+                    calendarHoldPref.setSummary(labels[which]);
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void showSecretDateDialog(Preference calendarSecretDatePref) {
+        if (PrefMgr.getCalendarSecretDate() == null) {
+            pickSecretDate(calendarSecretDatePref);
+            return;
+        }
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(R.string.calendar_secret_date)
+                .setMessage(secretDateLabel())
+                .setPositiveButton(R.string.calendar_secret_date_change, (dialog, which) -> pickSecretDate(calendarSecretDatePref))
+                .setNegativeButton(R.string.calendar_secret_date_turn_off, (dialog, which) -> {
+                    PrefMgr.setCalendarSecretDate(null);
+                    // The year works again, so the tip is worth showing again.
+                    PrefMgr.setDoShowQuitDisguiseInstuct(true);
+                    calendarSecretDatePref.setSummary(secretDateLabel());
+                })
+                .setNeutralButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void pickSecretDate(Preference calendarSecretDatePref) {
+        // The calendar only scrolls 100 months either way, so keep the date within reach.
+        YearMonth now = YearMonth.now();
+        long start = now.minusMonths(100).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+        long end = now.plusMonths(100).atEndOfMonth().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+
+        var picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText(R.string.calendar_secret_date)
+                .setCalendarConstraints(new CalendarConstraints.Builder()
+                        .setStart(start)
+                        .setEnd(end)
+                        .setValidator(CompositeDateValidator.allOf(List.of(
+                                DateValidatorPointForward.from(start),
+                                DateValidatorPointBackward.before(end))))
+                        .build())
+                .build();
+
+        picker.addOnPositiveButtonClickListener(selection -> {
+            LocalDate date = Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate();
+            PrefMgr.setCalendarSecretDate(date.toString());
+            calendarSecretDatePref.setSummary(secretDateLabel());
+        });
+        picker.show(activity.getSupportFragmentManager(), null);
     }
 
     private void showUnlockEquationDialog(Preference unlockEquationPref) {
